@@ -49,7 +49,7 @@ import frc.robot.lib.BLine.FlippingUtil.FieldSymmetry;
  * 
  * <h2>Alliance Flipping</h2>
  * <p>Paths can be flipped to the opposite alliance side using {@link #flip()} and
- * {@link #undoFlip()}. This uses {@link FlippingUtil} to transform coordinates.
+ * {@link #unflip()}. This uses {@link FlippingUtil} to transform coordinates.
  * 
  * @see PathElement
  * @see PathConstraints
@@ -726,6 +726,7 @@ public class Path {
     private PathConstraints pathConstraints;
     private static DefaultGlobalConstraints defaultGlobalConstraints = null;
     private boolean flipped = false;
+    private boolean mirrored = false;
     private boolean isValid = true;
     
     /**
@@ -1255,7 +1256,7 @@ public class Path {
      * Flips this path to the opposite alliance side.
      * 
      * <p>Uses {@link FlippingUtil} to transform all coordinates. This method only
-     * flips once - subsequent calls have no effect until {@link #undoFlip()} is called.
+     * flips once - subsequent calls have no effect until {@link #unflip()} is called.
      */
     public void flip() {
         if (!isValid()) {
@@ -1264,55 +1265,34 @@ public class Path {
         
         if (flipped) return;
 
-        for (int i = 0; i < pathElements.size(); i++) {
-            PathElement element = pathElements.get(i);
-            pathElements.set(i, element.flip());
+        List<PathElement> flippedPathElements = new ArrayList<>(pathElements.size());
+        for (PathElement element : pathElements) {
+            flippedPathElements.add(element.flip());
         }
+        pathElements = flippedPathElements;
         flipped = true;
-    }
-
-    public Path flipCopy() {
-        if (!isValid()) {
-            return this.copy();
-        }
-
-        List<PathElement> flippedElements = new ArrayList<>(pathElements.size());
-        for (PathElement e : this.pathElements) {
-            flippedElements.add(e.flip());
-        }
-
-        return new Path(flippedElements);
     }
 
     /**
      * Mirrors this path vertically across the field centerline.
      *
      * <p>This mirrors across the field width (horizontal centerline), where
-     * {@code y -> fieldSizeY - y} and {@code x} is unchanged, via {@link FlippingUtil}.
+     * {@code y -> fieldSizeY - y} and {@code x} is unchanged, via {@link FlippingUtil}. This method only
+     * mirrors once - subsequent calls have no effect until {@link #unmirror()} is called.
      */
     public void mirror() {
         if (!isValid()) {
             return;
         }
 
+        if (mirrored) return;
+
         List<PathElement> mirroredPathElements = new ArrayList<>(pathElements.size());
         for (PathElement element : pathElements) {
             mirroredPathElements.add(element.mirror());
         }
         pathElements = mirroredPathElements;
-    }
-
-    public Path mirrorCopy() {
-        if (!isValid()) {
-            return this.copy();
-        }
-
-        List<PathElement> mirroredElements = new ArrayList<>(pathElements.size());
-        for (PathElement e : this.pathElements) {
-            mirroredElements.add(e.mirror());
-        }
-
-        return new Path(mirroredElements);
+        mirrored = true;
     }
 
     /**
@@ -1320,7 +1300,7 @@ public class Path {
      * 
      * <p>Has no effect if the path has not been flipped.
      */
-    public void undoFlip() {
+    public void unflip() {
         if (!isValid()) {
             return;
         }
@@ -1329,6 +1309,29 @@ public class Path {
         flipped = false;
         flip();
         flipped = false;
+    }
+
+    public void unmirror() {
+        if (!isValid()) {
+            return;
+        }
+
+        if (!mirrored) return;
+        mirrored = false;
+        mirror();
+        mirrored = false;
+    }
+
+    public boolean isMutated() {
+        return this.flipped || this.mirrored;
+    }
+
+    public boolean isFlipped() {
+        return this.flipped;
+    }
+
+    public boolean isMirrored() {
+        return this.mirrored;
     }
 
     /**
